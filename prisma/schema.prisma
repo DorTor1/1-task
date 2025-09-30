@@ -1,0 +1,153 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// --- Enums ---
+enum Role {
+  MANAGER
+  ENGINEER
+  OBSERVER
+}
+
+enum DefectStatus {
+  NEW
+  IN_PROGRESS
+  IN_REVIEW
+  CLOSED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// --- Models ---
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(ENGINEER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  reportedDefects Defect[] @relation("ReportedBy")
+  assignedDefects Defect[] @relation("AssignedTo")
+  comments        Comment[]
+  histories       DefectHistory[]
+  attachments     Attachment[] @relation("UploadedBy")
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stages  Stage[]
+  defects Defect[]
+}
+
+model Stage {
+  id        String   @id @default(uuid())
+  name      String
+  position  Int      @default(0)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  defects Defect[]
+
+  @@unique([projectId, name])
+}
+
+model Defect {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  priority    Priority     @default(MEDIUM)
+  status      DefectStatus @default(NEW)
+  dueAt       DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  stage     Stage?  @relation(fields: [stageId], references: [id])
+  stageId   String?
+
+  reporter   User   @relation("ReportedBy", fields: [reporterId], references: [id])
+  reporterId String
+  assignee   User?  @relation("AssignedTo", fields: [assigneeId], references: [id])
+  assigneeId String?
+
+  comments  Comment[]
+  history   DefectHistory[]
+  files     Attachment[]
+
+  @@index([projectId])
+  @@index([status])
+  @@index([priority])
+  @@index([assigneeId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  defect   Defect @relation(fields: [defectId], references: [id], onDelete: Cascade)
+  defectId String
+
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+}
+
+model Attachment {
+  id           String   @id @default(uuid())
+  originalName String
+  storedName   String
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+  path         String
+
+  defect   Defect @relation(fields: [defectId], references: [id], onDelete: Cascade)
+  defectId String
+
+  uploadedBy   User   @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: Cascade)
+  uploadedById String
+}
+
+model DefectHistory {
+  id         String       @id @default(uuid())
+  createdAt  DateTime     @default(now())
+  field      String
+  oldValue   String?
+  newValue   String?
+  fromStatus DefectStatus?
+  toStatus   DefectStatus?
+  note       String?
+
+  defect   Defect @relation(fields: [defectId], references: [id], onDelete: Cascade)
+  defectId String
+
+  changedBy   User   @relation(fields: [changedById], references: [id], onDelete: Cascade)
+  changedById String
+
+  @@index([defectId])
+  @@index([createdAt])
+}
