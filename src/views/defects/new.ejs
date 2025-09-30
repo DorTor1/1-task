@@ -1,0 +1,52 @@
+<% layout('layout') %>
+<h1>Новый дефект</h1>
+<form method="post" action="/defects">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <div>
+    <label>Название</label>
+    <input name="title" value="<%= values.title || '' %>" />
+    <% if (errors?.title) { %><small class="error"><%= errors.title[0] %></small><% } %>
+  </div>
+  <div>
+    <label>Описание</label>
+    <textarea name="description"><%= values.description || '' %></textarea>
+  </div>
+  <div>
+    <label>Приоритет</label>
+    <select name="priority">
+      <% priorities.forEach(p => { %>
+        <option value="<%= p %>"><%= p %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Проект</label>
+    <select name="projectId">
+      <% projects.forEach(p => { %>
+        <option value="<%= p.id %>"><%= p.name %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Этап</label>
+    <select name="stageId">
+      <option value="">—</option>
+      <% projects.forEach(p => { %>
+        <% p.stages.forEach(s => { %>
+          <option value="<%= s.id %>"><%= p.name %> — <%= s.name %></option>
+        <% }) %>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Исполнитель (опц.)</label>
+    <input name="assigneeId" placeholder="UUID пользователя" />
+  </div>
+  <div>
+    <label>Срок</label>
+    <input name="dueAt" type="datetime-local" />
+  </div>
+  <button type="submit">Создать</button>
+  <a href="/defects">Отмена</a>
+</form>
+

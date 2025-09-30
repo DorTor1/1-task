@@ -1,0 +1,60 @@
+<% layout('layout') %>
+<h1><%= defect.title %></h1>
+<p><strong>Статус:</strong> <%= defect.status %> | <strong>Приоритет:</strong> <%= defect.priority %></p>
+<p><strong>Проект:</strong> <%= defect.project.name %> | <strong>Этап:</strong> <%= defect.stage ? defect.stage.name : '' %></p>
+<p><strong>Исполнитель:</strong> <%= defect.assignee ? defect.assignee.name : '—' %></p>
+
+<form method="post" action="/defects/<%= defect.id %>/status">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <select name="status">
+    <% statuses.forEach(s => { %>
+      <option value="<%= s %>" <%= defect.status === s ? 'selected' : '' %>><%= s %></option>
+    <% }) %>
+  </select>
+  <button type="submit">Сменить статус</button>
+</form>
+
+<a href="/defects/<%= defect.id %>/edit">Редактировать</a>
+
+<h2>История</h2>
+<ul>
+  <% defect.history.forEach(h => { %>
+    <li>
+      <small><%= new Date(h.createdAt).toLocaleString('ru-RU') %></small> — 
+      <%= h.field %>: <%= h.oldValue || '' %> → <%= h.newValue || '' %> 
+      <% if (h.fromStatus || h.toStatus) { %>
+        (<%= h.fromStatus || '' %> → <%= h.toStatus || '' %>)
+      <% } %>
+    </li>
+  <% }) %>
+  </ul>
+
+<h2>Комментарии</h2>
+<ul>
+  <% defect.comments.forEach(c => { %>
+    <li><strong><%= c.author.name %>:</strong> <%= c.content %> <small><%= new Date(c.createdAt).toLocaleString('ru-RU') %></small></li>
+  <% }) %>
+</ul>
+<form method="post" action="/defects/<%= defect.id %>/comments">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <textarea name="content" rows="2" placeholder="Добавить комментарий"></textarea>
+  <button type="submit">Отправить</button>
+</form>
+
+<h2>Вложения</h2>
+<ul>
+  <% defect.files.forEach(f => { %>
+    <li><a href="/<%= f.path %>" target="_blank"><%= f.originalName %></a> (<%= Math.round(f.size/1024) %> КБ)</li>
+  <% }) %>
+</ul>
+<form method="post" enctype="multipart/form-data" action="/defects/<%= defect.id %>/attachments">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <input type="file" name="file" />
+  <button type="submit">Загрузить</button>
+</form>
+
+<form method="post" action="/defects/<%= defect.id %>/delete" onsubmit="return confirm('Удалить дефект?')">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <button type="submit">Удалить</button>
+</form>
+

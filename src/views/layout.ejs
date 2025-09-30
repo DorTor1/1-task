@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= title %> — СистемаКонтроля</title>
+  <link rel="stylesheet" href="/public/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <nav>
+      <a href="/">Панель</a>
+      <a href="/projects">Проекты</a>
+      <a href="/defects">Дефекты</a>
+      <a href="/reports">Отчёты</a>
+    </nav>
+    <div class="user">
+      <% if (user) { %>
+        <span><%= user.name %> (<%= user.role %>)</span>
+        <form method="post" action="/auth/logout" style="display:inline">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button type="submit">Выход</button>
+        </form>
+      <% } %>
+    </div>
+  </header>
+  <main class="container">
+    <%- body %>
+  </main>
+</body>
+</html>
+

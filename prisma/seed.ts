@@ -1,15 +1,20 @@
-import { PrismaClient, Role, Priority, DefectStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = 'admin@local';
+  const adminEmail = 'admin@local.com';
   const adminPass = 'admin123';
-  const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
+  // migrate legacy admin email if needed
+  const legacyAdmin = await prisma.user.findUnique({ where: { email: 'admin@local' } });
+  if (legacyAdmin) {
+    await prisma.user.update({ where: { id: legacyAdmin.id }, data: { email: adminEmail } });
+  }
+  let existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
   if (!existingAdmin) {
     const passwordHash = await bcrypt.hash(adminPass, 10);
-    await prisma.user.create({
+    existingAdmin = await prisma.user.create({
       data: {
         name: 'Администратор',
         email: adminEmail,
@@ -20,22 +25,25 @@ async function main() {
   }
 
   const manager = await prisma.user.findFirst({ where: { role: 'MANAGER' } });
-  const engineer = await prisma.user.upsert({
-    where: { email: 'eng@local' },
-    update: {},
-    create: {
-      name: 'Инженер',
-      email: 'eng@local',
-      passwordHash: await bcrypt.hash('eng12345', 10),
-      role: 'ENGINEER',
-    },
-  });
 
-  const project = await prisma.project.upsert({
-    where: { name: 'Объект №1' },
-    update: {},
-    create: { name: 'Объект №1', description: 'Демо объект' },
-  });
+  const engineerEmail = 'eng@local.com';
+  const legacyEng = await prisma.user.findUnique({ where: { email: 'eng@local' } });
+  if (legacyEng) {
+    await prisma.user.update({ where: { id: legacyEng.id }, data: { email: engineerEmail } });
+  }
+  let engineer = await prisma.user.findUnique({ where: { email: engineerEmail } });
+  if (!engineer) {
+    engineer = await prisma.user.create({
+      data: {
+        name: 'Инженер',
+        email: engineerEmail,
+        passwordHash: await bcrypt.hash('eng12345', 10),
+        role: 'ENGINEER',
+      },
+    });
+  }
+
+  const project = await prisma.project.create({ data: { name: 'Объект №1', description: 'Демо объект' } });
 
   const stage1 = await prisma.stage.upsert({
     where: { projectId_name: { projectId: project.id, name: 'Черновые работы' } },

@@ -1,0 +1,17 @@
+<% layout('layout') %>
+<h1>Новый проект</h1>
+<form method="post" action="/projects">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <div>
+    <label>Название</label>
+    <input name="name" />
+    <% if (errors?.name) { %><small class="error"><%= errors.name[0] %></small><% } %>
+  </div>
+  <div>
+    <label>Описание</label>
+    <textarea name="description"></textarea>
+  </div>
+  <button type="submit">Создать</button>
+  <a href="/projects">Отмена</a>
+</form>
+

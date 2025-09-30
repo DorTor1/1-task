@@ -1,0 +1,26 @@
+<% layout('layout') %>
+<h1>Отчёты</h1>
+<section>
+  <h2>По статусам</h2>
+  <ul>
+    <% byStatus.forEach(s => { %>
+      <li><%= s.status %>: <%= s._count._all %></li>
+    <% }) %>
+  </ul>
+</section>
+
+<section>
+  <h2>По приоритетам</h2>
+  <ul>
+    <% byPriority.forEach(s => { %>
+      <li><%= s.priority %>: <%= s._count._all %></li>
+    <% }) %>
+  </ul>
+</section>
+
+<p>
+  <a href="/reports/export/csv">Экспорт CSV</a>
+  <a href="/reports/export/xlsx">Экспорт Excel</a>
+  
+</p>
+

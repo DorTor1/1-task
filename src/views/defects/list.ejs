@@ -1,0 +1,21 @@
+<% layout('layout') %>
+<h1>Дефекты</h1>
+<a href="/defects/new">Новый дефект</a>
+<table>
+  <thead>
+    <tr><th>Название</th><th>Проект</th><th>Этап</th><th>Статус</th><th>Приоритет</th><th>Исполнитель</th></tr>
+  </thead>
+  <tbody>
+  <% defects.forEach(d => { %>
+    <tr>
+      <td><a href="/defects/<%= d.id %>"><%= d.title %></a></td>
+      <td><%= d.project.name %></td>
+      <td><%= d.stage ? d.stage.name : '' %></td>
+      <td><%= d.status %></td>
+      <td><%= d.priority %></td>
+      <td><%= d.assignee ? d.assignee.name : '' %></td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+

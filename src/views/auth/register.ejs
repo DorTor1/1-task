@@ -1,0 +1,32 @@
+<% layout('layout') %>
+<h1>Регистрация</h1>
+<form method="post">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <div>
+    <label>Имя</label>
+    <input name="name" value="<%= values.name || '' %>" />
+    <% if (errors?.name) { %><small class="error"><%= errors.name[0] %></small><% } %>
+  </div>
+  <div>
+    <label>E-mail</label>
+    <input name="email" type="email" value="<%= values.email || '' %>" />
+    <% if (errors?.email) { %><small class="error"><%= errors.email[0] %></small><% } %>
+  </div>
+  <div>
+    <label>Пароль</label>
+    <input name="password" type="password" />
+    <% if (errors?.password) { %><small class="error"><%= errors.password[0] %></small><% } %>
+  </div>
+  <div>
+    <label>Роль</label>
+    <select name="role">
+      <option value="ENGINEER">Инженер</option>
+      <option value="MANAGER">Менеджер</option>
+      <option value="OBSERVER">Наблюдатель</option>
+    </select>
+  </div>
+  <button type="submit">Создать</button>
+  <a href="/auth/login">Назад</a>
+  
+</form>
+

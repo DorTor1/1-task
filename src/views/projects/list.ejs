@@ -1,0 +1,18 @@
+<% layout('layout') %>
+<h1>Проекты</h1>
+<a href="/projects/new">Новый проект</a>
+<table>
+  <thead>
+    <tr><th>Название</th><th>Описание</th><th>Создан</th></tr>
+  </thead>
+  <tbody>
+  <% projects.forEach(p => { %>
+    <tr>
+      <td><a href="/projects/<%= p.id %>"><%= p.name %></a></td>
+      <td><%= p.description || '' %></td>
+      <td><%= new Date(p.createdAt).toLocaleString('ru-RU') %></td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+

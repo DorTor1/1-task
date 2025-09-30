@@ -1,0 +1,46 @@
+<% layout('layout') %>
+<h1>Редактирование дефекта</h1>
+<form method="post" action="/defects/<%= defect.id %>">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <div>
+    <label>Название</label>
+    <input name="title" value="<%= defect.title %>" />
+  </div>
+  <div>
+    <label>Описание</label>
+    <textarea name="description"><%= defect.description || '' %></textarea>
+  </div>
+  <div>
+    <label>Приоритет</label>
+    <select name="priority">
+      <% priorities.forEach(p => { %>
+        <option value="<%= p %>" <%= defect.priority === p ? 'selected' : '' %>><%= p %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Этап</label>
+    <select name="stageId">
+      <option value="">—</option>
+      <% defect.project.stages.forEach(s => { %>
+        <option value="<%= s.id %>" <%= defect.stageId === s.id ? 'selected' : '' %>><%= s.name %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Исполнитель</label>
+    <select name="assigneeId">
+      <option value="">—</option>
+      <% users.forEach(u => { %>
+        <option value="<%= u.id %>" <%= defect.assigneeId === u.id ? 'selected' : '' %>><%= u.name %> (<%= u.role %>)</option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Срок</label>
+    <input name="dueAt" type="datetime-local" value="<%= defect.dueAt ? new Date(defect.dueAt).toISOString().slice(0,16) : '' %>" />
+  </div>
+  <button type="submit">Сохранить</button>
+  <a href="/defects/<%= defect.id %>">Отмена</a>
+</form>
+
