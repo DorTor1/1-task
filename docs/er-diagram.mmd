@@ -1,0 +1,92 @@
+---
+title: ER-диаграмма «СистемаКонтроля»
+---
+erDiagram
+    USER ||--o{ DEFECT : "reported_defects"
+    USER ||--o{ DEFECT : "assigned_defects"
+    USER ||--o{ COMMENT : "writes"
+    USER ||--o{ ATTACHMENT : "uploads"
+    USER ||--o{ DEFECT_HISTORY : "changes"
+
+    PROJECT ||--o{ STAGE : "has"
+    PROJECT ||--o{ DEFECT : "contains"
+
+    STAGE ||--o{ DEFECT : "groups"
+
+    DEFECT ||--o{ COMMENT : "has"
+    DEFECT ||--o{ ATTACHMENT : "has"
+    DEFECT ||--o{ DEFECT_HISTORY : "produces"
+
+    USER {
+        string id PK
+        string email UK
+        string passwordHash
+        string name
+        enum role
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    PROJECT {
+        string id PK
+        string name
+        string description
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    STAGE {
+        string id PK
+        string name
+        int position
+        string projectId FK
+    }
+
+    DEFECT {
+        string id PK
+        string title
+        string description
+        enum priority
+        enum status
+        datetime dueAt
+        datetime createdAt
+        datetime updatedAt
+        string projectId FK
+        string stageId FK
+        string reporterId FK
+        string assigneeId FK
+    }
+
+    COMMENT {
+        string id PK
+        string content
+        datetime createdAt
+        string defectId FK
+        string authorId FK
+    }
+
+    ATTACHMENT {
+        string id PK
+        string originalName
+        string storedName
+        string mimeType
+        int size
+        string path
+        datetime createdAt
+        string defectId FK
+        string uploadedById FK
+    }
+
+    DEFECT_HISTORY {
+        string id PK
+        string field
+        string oldValue
+        string newValue
+        enum fromStatus
+        enum toStatus
+        string note
+        datetime createdAt
+        string defectId FK
+        string changedById FK
+    }
+
