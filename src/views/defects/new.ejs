@@ -15,7 +15,8 @@
     <label>Приоритет</label>
     <select name="priority">
       <% priorities.forEach(p => { %>
-        <option value="<%= p %>"><%= p %></option>
+        <% const priorityMap = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий', CRITICAL: 'Критический' }; %>
+        <option value="<%= p %>"><%= priorityMap[p] %></option>
       <% }) %>
     </select>
   </div>

@@ -1,6 +1,21 @@
 <% layout('layout') %>
 <h1><%= defect.title %></h1>
-<p><strong>Статус:</strong> <%= defect.status %> | <strong>Приоритет:</strong> <%= defect.priority %></p>
+<%
+  const statusMap = {
+    NEW: 'Новая',
+    IN_PROGRESS: 'В работе',
+    IN_REVIEW: 'На проверке',
+    CLOSED: 'Закрыта',
+    CANCELLED: 'Отменена'
+  };
+  const priorityMap = {
+    LOW: 'Низкий',
+    MEDIUM: 'Средний',
+    HIGH: 'Высокий',
+    CRITICAL: 'Критический'
+  };
+%>
+<p><strong>Статус:</strong> <%= statusMap[defect.status] %> | <strong>Приоритет:</strong> <%= priorityMap[defect.priority] %></p>
 <p><strong>Проект:</strong> <%= defect.project.name %> | <strong>Этап:</strong> <%= defect.stage ? defect.stage.name : '' %></p>
 <p><strong>Исполнитель:</strong> <%= defect.assignee ? defect.assignee.name : '—' %></p>
 
@@ -8,7 +23,7 @@
   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
   <select name="status">
     <% statuses.forEach(s => { %>
-      <option value="<%= s %>" <%= defect.status === s ? 'selected' : '' %>><%= s %></option>
+      <option value="<%= s %>" <%= defect.status === s ? 'selected' : '' %>><%= statusMap[s] %></option>
     <% }) %>
   </select>
   <button type="submit">Сменить статус</button>
@@ -21,9 +36,12 @@
   <% defect.history.forEach(h => { %>
     <li>
       <small><%= new Date(h.createdAt).toLocaleString('ru-RU') %></small> — 
-      <%= h.field %>: <%= h.oldValue || '' %> → <%= h.newValue || '' %> 
+      <%= h.field %>: 
+      <% const oldVal = h.field === 'status' ? (h.fromStatus ? statusMap[h.fromStatus] : '') : h.field === 'priority' ? (h.oldValue ? priorityMap[h.oldValue] : '') : (h.oldValue || ''); %>
+      <% const newVal = h.field === 'status' ? (h.toStatus ? statusMap[h.toStatus] : '') : h.field === 'priority' ? (h.newValue ? priorityMap[h.newValue] : '') : (h.newValue || ''); %>
+      <%= oldVal %> → <%= newVal %> 
       <% if (h.fromStatus || h.toStatus) { %>
-        (<%= h.fromStatus || '' %> → <%= h.toStatus || '' %>)
+        (<%= h.fromStatus ? statusMap[h.fromStatus] : '' %> → <%= h.toStatus ? statusMap[h.toStatus] : '' %>)
       <% } %>
     </li>
   <% }) %>

@@ -4,19 +4,21 @@
 <form method="get" class="filters">
   <div>
     <label>Статус</label>
+    <% const statusMap = { NEW: 'Новая', IN_PROGRESS: 'В работе', IN_REVIEW: 'На проверке', CLOSED: 'Закрыта', CANCELLED: 'Отменена' }; %>
     <select name="status">
       <option value="">Все</option>
       <% statuses.forEach(s => { %>
-        <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s %></option>
+        <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= statusMap[s] %></option>
       <% }) %>
     </select>
   </div>
   <div>
     <label>Приоритет</label>
+    <% const priorityMap = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий', CRITICAL: 'Критический' }; %>
     <select name="priority">
       <option value="">Все</option>
       <% priorities.forEach(p => { %>
-        <option value="<%= p %>" <%= filters.priority === p ? 'selected' : '' %>><%= p %></option>
+        <option value="<%= p %>" <%= filters.priority === p ? 'selected' : '' %>><%= priorityMap[p] %></option>
       <% }) %>
     </select>
   </div>
@@ -67,8 +69,8 @@
       <td><a href="/defects/<%= d.id %>"><%= d.title %></a></td>
       <td><%= d.project.name %></td>
       <td><%= d.stage ? d.stage.name : '' %></td>
-      <td><%= d.status %></td>
-      <td><%= d.priority %></td>
+      <td><%= statusMap[d.status] %></td>
+      <td><%= priorityMap[d.priority] %></td>
       <td><%= d.assignee ? d.assignee.name : '' %></td>
     </tr>
   <% }) %>

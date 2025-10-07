@@ -23,12 +23,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  const statusMap = { NEW: 'Новая', IN_PROGRESS: 'В работе', IN_REVIEW: 'На проверке', CLOSED: 'Закрыта', CANCELLED: 'Отменена' };
   const statusData = {
-    labels: <%- JSON.stringify(byStatus.map(s => s.status)) %>,
+    labels: <%- JSON.stringify(byStatus.map(s => statusMap[s.status] || s.status)) %>,
     counts: <%- JSON.stringify(byStatus.map(s => s._count._all)) %>
   };
+  const priorityMap = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий', CRITICAL: 'Критический' };
   const prData = {
-    labels: <%- JSON.stringify(byPriority.map(s => s.priority)) %>,
+    labels: <%- JSON.stringify(byPriority.map(s => priorityMap[s.priority] || s.priority)) %>,
     counts: <%- JSON.stringify(byPriority.map(s => s._count._all)) %>
   };
   const projData = {

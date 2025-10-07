@@ -12,9 +12,10 @@
   </div>
   <div>
     <label>Приоритет</label>
+    <% const priorityMap = { LOW: 'Низкий', MEDIUM: 'Средний', HIGH: 'Высокий', CRITICAL: 'Критический' }; %>
     <select name="priority">
       <% priorities.forEach(p => { %>
-        <option value="<%= p %>" <%= defect.priority === p ? 'selected' : '' %>><%= p %></option>
+        <option value="<%= p %>" <%= defect.priority === p ? 'selected' : '' %>><%= priorityMap[p] %></option>
       <% }) %>
     </select>
   </div>
