@@ -1,32 +1,82 @@
 import { Router } from 'express';
-import { PrismaClient, DefectStatus, Priority } from '@prisma/client';
+import { DefectStatus, Priority } from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth';
 import multer from 'multer';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 const router = Router();
 router.use(requireAuth);
 router.get('/', async (req, res) => {
-    const { status, priority, projectId, assigneeId, q } = req.query;
+    const query = req.query;
+    const filters = {
+        status: query.status ?? '',
+        priority: query.priority ?? '',
+        projectId: query.projectId ?? '',
+        assigneeId: query.assigneeId ?? '',
+        q: query.q ?? '',
+        sort: query.sort ?? 'createdAt_desc',
+    };
     const where = {};
-    if (status)
-        where.status = status;
-    if (priority)
-        where.priority = priority;
-    if (projectId)
-        where.projectId = projectId;
-    if (assigneeId)
-        where.assigneeId = assigneeId;
-    if (q)
-        where.title = { contains: q, mode: 'insensitive' };
-    const defects = await prisma.defect.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        include: { project: true, stage: true, reporter: true, assignee: true },
+    if (filters.status && Object.values(DefectStatus).includes(filters.status)) {
+        where.status = filters.status;
+    }
+    if (filters.priority && Object.values(Priority).includes(filters.priority)) {
+        where.priority = filters.priority;
+    }
+    if (filters.projectId) {
+        where.projectId = filters.projectId;
+    }
+    if (filters.assigneeId) {
+        where.assigneeId = filters.assigneeId;
+    }
+    if (filters.q) {
+        const search = filters.q;
+        where.OR = [
+            { title: { contains: search } },
+            { description: { contains: search } },
+        ];
+    }
+    const orderMap = {
+        createdAt_desc: { createdAt: 'desc' },
+        createdAt_asc: { createdAt: 'asc' },
+        priority_desc: { priority: 'desc' },
+        priority_asc: { priority: 'asc' },
+        dueAt_asc: { dueAt: 'asc' },
+        dueAt_desc: { dueAt: 'desc' },
+    };
+    const resolvedOrder = orderMap[filters.sort] ?? orderMap.createdAt_desc;
+    const orderInput = [resolvedOrder];
+    const [defects, projects, users] = await Promise.all([
+        prisma.defect.findMany({
+            where,
+            orderBy: orderInput,
+            include: { project: true, stage: true, reporter: true, assignee: true },
+        }),
+        prisma.project.findMany({ orderBy: { name: 'asc' } }),
+        prisma.user.findMany({ orderBy: { name: 'asc' } }),
+    ]);
+    const statuses = Object.values(DefectStatus);
+    const priorities = Object.values(Priority);
+    const sortOptions = [
+        { value: 'createdAt_desc', label: 'По дате создания (новые)' },
+        { value: 'createdAt_asc', label: 'По дате создания (старые)' },
+        { value: 'priority_desc', label: 'По приоритету (высокие)' },
+        { value: 'priority_asc', label: 'По приоритету (низкие)' },
+        { value: 'dueAt_asc', label: 'По сроку (раньше)' },
+        { value: 'dueAt_desc', label: 'По сроку (позже)' },
+    ];
+    res.render('defects/list', {
+        title: 'Дефекты',
+        defects,
+        filters,
+        statuses,
+        priorities,
+        projects,
+        users,
+        sortOptions,
     });
-    res.render('defects/list', { title: 'Дефекты', defects });
 });
 router.get('/new', requireRole(['MANAGER', 'ENGINEER']), async (req, res) => {
     const projects = await prisma.project.findMany({ include: { stages: { orderBy: { position: 'asc' } } } });
@@ -93,16 +143,26 @@ router.post('/', requireRole(['MANAGER', 'ENGINEER']), async (req, res) => {
     res.redirect(`/defects/${defect.id}`);
 });
 router.get('/:id', async (req, res) => {
+    const defectId = req.params.id;
     const defect = await prisma.defect.findUnique({
-        where: { id: req.params.id },
-        include: { project: { include: { stages: true } }, stage: true, reporter: true, assignee: true, comments: { include: { author: true }, orderBy: { createdAt: 'desc' } }, files: true, history: { orderBy: { createdAt: 'desc' }, include: { changedBy: true } } },
+        where: { id: defectId },
+        include: {
+            project: { include: { stages: true } },
+            stage: true,
+            reporter: true,
+            assignee: true,
+            comments: { include: { author: true }, orderBy: { createdAt: 'desc' } },
+            files: true,
+            history: { orderBy: { createdAt: 'desc' }, include: { changedBy: true } },
+        },
     });
     if (!defect)
         return res.status(404).render('404', { title: 'Не найдено' });
     res.render('defects/detail', { title: defect.title, defect, priorities: Object.keys(Priority), statuses: Object.keys(DefectStatus) });
 });
 router.get('/:id/edit', requireRole(['MANAGER']), async (req, res) => {
-    const defect = await prisma.defect.findUnique({ where: { id: req.params.id }, include: { project: { include: { stages: true } } } });
+    const defectId = req.params.id;
+    const defect = await prisma.defect.findUnique({ where: { id: defectId }, include: { project: { include: { stages: true } } } });
     if (!defect)
         return res.status(404).render('404', { title: 'Не найдено' });
     const users = await prisma.user.findMany();
@@ -125,13 +185,14 @@ router.post('/:id', requireRole(['MANAGER']), async (req, res) => {
     });
     if (!parse.success)
         return res.status(400).redirect(`/defects/${req.params.id}/edit`);
-    const old = await prisma.defect.findUnique({ where: { id: req.params.id } });
+    const defectId = req.params.id;
+    const old = await prisma.defect.findUnique({ where: { id: defectId } });
     if (!old)
         return res.status(404).render('404', { title: 'Не найдено' });
     const user = req.session.user;
     const data = parse.data;
     const updated = await prisma.defect.update({
-        where: { id: req.params.id },
+        where: { id: defectId },
         data: {
             title: data.title,
             description: data.description || null,
@@ -173,29 +234,33 @@ router.post('/:id/status', requireRole(['MANAGER', 'ENGINEER']), async (req, res
         return res.status(400).redirect(`/defects/${req.params.id}`);
     const target = parse.data.status;
     const user = req.session.user;
-    const defect = await prisma.defect.findUnique({ where: { id: req.params.id } });
+    const defectId = req.params.id;
+    const defect = await prisma.defect.findUnique({ where: { id: defectId } });
     if (!defect)
         return res.status(404).render('404', { title: 'Не найдено' });
     const allowed = allowedTransitions[defect.status];
     if (!allowed.includes(target))
         return res.status(400).render('error', { title: 'Ошибка', message: 'Недопустимый переход статуса' });
-    const updated = await prisma.defect.update({ where: { id: defect.id }, data: { status: target } });
-    await prisma.defectHistory.create({
-        data: {
-            defectId: defect.id,
-            field: 'status',
-            fromStatus: defect.status,
-            toStatus: target,
-            oldValue: defect.status,
-            newValue: target,
-            changedById: user.id,
-            note: 'Смена статуса',
-        },
-    });
-    res.redirect(`/defects/${updated.id}`);
+    await prisma.$transaction([
+        prisma.defect.update({ where: { id: defect.id }, data: { status: target } }),
+        prisma.defectHistory.create({
+            data: {
+                defect: { connect: { id: defect.id } },
+                field: 'status',
+                fromStatus: defect.status,
+                toStatus: target,
+                oldValue: defect.status,
+                newValue: target,
+                changedBy: { connect: { id: user.id } },
+                note: 'Смена статуса',
+            },
+        }),
+    ]);
+    res.redirect(`/defects/${defect.id}`);
 });
 router.post('/:id/delete', requireRole(['MANAGER']), async (req, res) => {
-    await prisma.defect.delete({ where: { id: req.params.id } });
+    const defectId = req.params.id;
+    await prisma.defect.delete({ where: { id: defectId } });
     res.redirect('/defects');
 });
 export default router;
@@ -203,11 +268,18 @@ export default router;
 router.post('/:id/comments', requireRole(['MANAGER', 'ENGINEER']), async (req, res) => {
     const schema = z.object({ content: z.string().min(1) });
     const parse = schema.safeParse(req.body);
+    const defectId = req.params.id;
     if (!parse.success)
-        return res.status(400).redirect(`/defects/${req.params.id}`);
+        return res.status(400).redirect(`/defects/${defectId}`);
     const user = req.session.user;
-    await prisma.comment.create({ data: { defectId: req.params.id, authorId: user.id, content: parse.data.content } });
-    res.redirect(`/defects/${req.params.id}`);
+    await prisma.comment.create({
+        data: {
+            content: parse.data.content,
+            defect: { connect: { id: defectId } },
+            author: { connect: { id: user.id } },
+        },
+    });
+    res.redirect(`/defects/${defectId}`);
 });
 // Вложения
 const storage = multer.diskStorage({
@@ -222,9 +294,10 @@ router.post('/:id/attachments', requireRole(['MANAGER', 'ENGINEER']), upload.sin
     if (!req.file)
         return res.status(400).redirect(`/defects/${req.params.id}`);
     const user = req.session.user;
+    const defectId = req.params.id;
     await prisma.attachment.create({
         data: {
-            defect: { connect: { id: req.params.id } },
+            defect: { connect: { id: defectId } },
             uploadedBy: { connect: { id: user.id } },
             originalName: req.file.originalname,
             storedName: req.file.filename,
@@ -233,6 +306,6 @@ router.post('/:id/attachments', requireRole(['MANAGER', 'ENGINEER']), upload.sin
             path: `uploads/${req.file.filename}`,
         },
     });
-    res.redirect(`/defects/${req.params.id}`);
+    res.redirect(`/defects/${defectId}`);
 });
 //# sourceMappingURL=defects.js.map

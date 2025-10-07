@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 const router = Router();
 
 const loginSchema = z.object({

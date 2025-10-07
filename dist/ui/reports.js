@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { createObjectCsvWriter } from 'csv-writer';
 import ExcelJS from 'exceljs';
 import path from 'node:path';
 import { requireAuth, requireRole } from '../middleware/auth';
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
+import { writeFile } from 'node:fs/promises';
 const router = Router();
 router.use(requireAuth);
 router.get('/', async (req, res) => {
@@ -20,44 +19,60 @@ router.get('/', async (req, res) => {
         name: projects.find((x) => x.id === p.projectId)?.name || 'Неизвестно',
         count: p._count._all,
     }));
+    const statusMap = {
+        NEW: 'Новая',
+        IN_PROGRESS: 'В работе',
+        IN_REVIEW: 'На проверке',
+        CLOSED: 'Закрыта',
+        CANCELLED: 'Отменена',
+    };
+    const priorityMap = {
+        LOW: 'Низкий',
+        MEDIUM: 'Средний',
+        HIGH: 'Высокий',
+        CRITICAL: 'Критический',
+    };
+    const statusChart = {
+        labels: byStatus.map((s) => statusMap[s.status] || s.status),
+        counts: byStatus.map((s) => s._count._all),
+    };
+    const priorityChart = {
+        labels: byPriority.map((p) => priorityMap[p.priority] || p.priority),
+        counts: byPriority.map((p) => p._count._all),
+    };
+    const projectChart = {
+        labels: byProjectWithNames.map((p) => p.name),
+        counts: byProjectWithNames.map((p) => p.count),
+    };
     res.render('reports/index', {
         title: 'Отчёты',
         byStatus,
         byPriority,
         byProject: byProjectWithNames,
+        statusChart,
+        priorityChart,
+        projectChart,
     });
 });
 router.get('/export/csv', requireRole(['MANAGER']), async (req, res) => {
     const defects = await prisma.defect.findMany({ include: { project: true, stage: true, reporter: true, assignee: true } });
     const filePath = path.join(process.cwd(), 'uploads', `defects-${Date.now()}.csv`);
-    const csvWriter = createObjectCsvWriter({
-        path: filePath,
-        header: [
-            { id: 'id', title: 'ID' },
-            { id: 'title', title: 'Название' },
-            { id: 'status', title: 'Статус' },
-            { id: 'priority', title: 'Приоритет' },
-            { id: 'project', title: 'Проект' },
-            { id: 'stage', title: 'Этап' },
-            { id: 'assignee', title: 'Исполнитель' },
-            { id: 'reporter', title: 'Автор' },
-            { id: 'createdAt', title: 'Создан' },
-        ],
-        encoding: 'utf8',
-        fieldDelimiter: ';',
-        alwaysQuote: true,
-    });
-    await csvWriter.writeRecords(defects.map((d) => ({
-        id: d.id,
-        title: d.title,
-        status: d.status,
-        priority: d.priority,
-        project: d.project.name,
-        stage: d.stage?.name || '',
-        assignee: d.assignee?.name || '',
-        reporter: d.reporter.name,
-        createdAt: d.createdAt.toISOString(),
-    })));
+    const headers = ['ID', 'Название', 'Статус', 'Приоритет', 'Проект', 'Этап', 'Исполнитель', 'Автор', 'Создан'];
+    const rows = defects.map((d) => [
+        d.id,
+        d.title,
+        d.status,
+        d.priority,
+        d.project.name,
+        d.stage?.name || '',
+        d.assignee?.name || '',
+        d.reporter.name,
+        d.createdAt.toISOString(),
+    ]);
+    const csvContent = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(';'))
+        .join('\n');
+    await writeFile(filePath, csvContent, 'utf8');
     res.download(filePath);
 });
 router.get('/export/xlsx', requireRole(['MANAGER']), async (req, res) => {

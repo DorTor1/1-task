@@ -7,13 +7,12 @@ import morgan from 'morgan';
 import compression from 'compression';
 import csrf from 'csurf';
 import ejsMate from 'ejs-mate';
-import { PrismaClient } from '@prisma/client';
 import authRouter from './ui/auth';
 import projectsRouter from './ui/projects';
 import defectsRouter from './ui/defects';
 import reportsRouter from './ui/reports';
+import prisma from './utils/prisma';
 
-export const prisma = new PrismaClient();
 const app = express();
 
 app.engine('ejs', ejsMate);

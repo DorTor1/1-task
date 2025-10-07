@@ -1,8 +1,7 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth';
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 const router = Router();
 router.use(requireAuth);
 router.get('/', async (req, res) => {
@@ -26,19 +25,21 @@ router.post('/', requireRole(['MANAGER']), async (req, res) => {
     res.redirect('/projects');
 });
 router.get('/:id', async (req, res) => {
-    const project = await prisma.project.findUnique({ where: { id: req.params.id }, include: { stages: { orderBy: { position: 'asc' } }, defects: true } });
+    const projectId = req.params.id;
+    const project = await prisma.project.findUnique({ where: { id: projectId }, include: { stages: { orderBy: { position: 'asc' } }, defects: true } });
     if (!project)
         return res.status(404).render('404', { title: 'Не найдено' });
     res.render('projects/detail', { title: project.name, project });
 });
 router.post('/:id/stages', requireRole(['MANAGER']), async (req, res) => {
+    const projectId = req.params.id;
     const schema = z.object({ name: z.string().min(2), position: z.coerce.number().int().nonnegative().default(0) });
     const parse = schema.safeParse(req.body);
     if (!parse.success)
-        return res.status(400).redirect(`/projects/${req.params.id}`);
+        return res.status(400).redirect(`/projects/${projectId}`);
     const { name, position } = parse.data;
-    await prisma.stage.create({ data: { name, position, projectId: req.params.id } });
-    res.redirect(`/projects/${req.params.id}`);
+    await prisma.stage.create({ data: { name, position, project: { connect: { id: projectId } } } });
+    res.redirect(`/projects/${projectId}`);
 });
 export default router;
 //# sourceMappingURL=projects.js.map
