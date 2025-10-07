@@ -2,20 +2,17 @@
 <h1>Отчёты</h1>
 <section>
   <h2>По статусам</h2>
-  <ul>
-    <% byStatus.forEach(s => { %>
-      <li><%= s.status %>: <%= s._count._all %></li>
-    <% }) %>
-  </ul>
+  <canvas id="statusChart" height="120"></canvas>
 </section>
 
 <section>
   <h2>По приоритетам</h2>
-  <ul>
-    <% byPriority.forEach(s => { %>
-      <li><%= s.priority %>: <%= s._count._all %></li>
-    <% }) %>
-  </ul>
+  <canvas id="priorityChart" height="120"></canvas>
+</section>
+
+<section>
+  <h2>По проектам</h2>
+  <canvas id="projectChart" height="120"></canvas>
 </section>
 
 <p>
@@ -23,4 +20,36 @@
   <a href="/reports/export/xlsx">Экспорт Excel</a>
   
 </p>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const statusData = {
+    labels: <%- JSON.stringify(byStatus.map(s => s.status)) %>,
+    counts: <%- JSON.stringify(byStatus.map(s => s._count._all)) %>
+  };
+  const prData = {
+    labels: <%- JSON.stringify(byPriority.map(s => s.priority)) %>,
+    counts: <%- JSON.stringify(byPriority.map(s => s._count._all)) %>
+  };
+  const projData = {
+    labels: <%- JSON.stringify(byProject.map(p => p.name)) %>,
+    counts: <%- JSON.stringify(byProject.map(p => p.count)) %>
+  };
+
+  function renderBar(id, labels, data) {
+    const ctx = document.getElementById(id).getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ label: 'Количество', data, backgroundColor: '#0d47a1' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  renderBar('statusChart', statusData.labels, statusData.counts);
+  renderBar('priorityChart', prData.labels, prData.counts);
+  renderBar('projectChart', projData.labels, projData.counts);
+</script>
 

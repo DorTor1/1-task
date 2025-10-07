@@ -224,8 +224,8 @@ router.post('/:id/attachments', requireRole(['MANAGER', 'ENGINEER']), upload.sin
     const user = req.session.user;
     await prisma.attachment.create({
         data: {
-            defectId: req.params.id,
-            uploadedById: user.id,
+            defect: { connect: { id: req.params.id } },
+            uploadedBy: { connect: { id: user.id } },
             originalName: req.file.originalname,
             storedName: req.file.filename,
             mimeType: req.file.mimetype,

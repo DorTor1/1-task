@@ -14,7 +14,22 @@ router.use(requireAuth);
 router.get('/', async (req, res) => {
   const byStatus = await prisma.defect.groupBy({ by: ['status'], _count: { _all: true } });
   const byPriority = await prisma.defect.groupBy({ by: ['priority'], _count: { _all: true } });
-  res.render('reports/index', { title: 'Отчёты', byStatus, byPriority });
+  const byProject = await prisma.defect.groupBy({ by: ['projectId'], _count: { _all: true } });
+  const projectIds = byProject.map((p) => p.projectId);
+  const projects = projectIds.length
+    ? await prisma.project.findMany({ where: { id: { in: projectIds } } })
+    : [];
+  const byProjectWithNames = byProject.map((p) => ({
+    projectId: p.projectId,
+    name: projects.find((x) => x.id === p.projectId)?.name || 'Неизвестно',
+    count: (p as any)._count._all as number,
+  }));
+  res.render('reports/index', {
+    title: 'Отчёты',
+    byStatus,
+    byPriority,
+    byProject: byProjectWithNames,
+  });
 });
 
 router.get('/export/csv', requireRole(['MANAGER']), async (req, res) => {

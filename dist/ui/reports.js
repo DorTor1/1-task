@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { PrismaClient, DefectStatus, Priority } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { createObjectCsvWriter } from 'csv-writer';
 import ExcelJS from 'exceljs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { requireAuth, requireRole } from '../middleware/auth';
 const prisma = new PrismaClient();
 const router = Router();
@@ -11,7 +10,22 @@ router.use(requireAuth);
 router.get('/', async (req, res) => {
     const byStatus = await prisma.defect.groupBy({ by: ['status'], _count: { _all: true } });
     const byPriority = await prisma.defect.groupBy({ by: ['priority'], _count: { _all: true } });
-    res.render('reports/index', { title: 'Отчёты', byStatus, byPriority });
+    const byProject = await prisma.defect.groupBy({ by: ['projectId'], _count: { _all: true } });
+    const projectIds = byProject.map((p) => p.projectId);
+    const projects = projectIds.length
+        ? await prisma.project.findMany({ where: { id: { in: projectIds } } })
+        : [];
+    const byProjectWithNames = byProject.map((p) => ({
+        projectId: p.projectId,
+        name: projects.find((x) => x.id === p.projectId)?.name || 'Неизвестно',
+        count: p._count._all,
+    }));
+    res.render('reports/index', {
+        title: 'Отчёты',
+        byStatus,
+        byPriority,
+        byProject: byProjectWithNames,
+    });
 });
 router.get('/export/csv', requireRole(['MANAGER']), async (req, res) => {
     const defects = await prisma.defect.findMany({ include: { project: true, stage: true, reporter: true, assignee: true } });
