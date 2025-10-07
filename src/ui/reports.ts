@@ -24,11 +24,44 @@ router.get('/', async (req, res) => {
     name: projects.find((x) => x.id === p.projectId)?.name || 'Неизвестно',
     count: (p as any)._count._all as number,
   }));
+
+  const statusMap: Record<DefectStatus, string> = {
+    NEW: 'Новая',
+    IN_PROGRESS: 'В работе',
+    IN_REVIEW: 'На проверке',
+    CLOSED: 'Закрыта',
+    CANCELLED: 'Отменена',
+  };
+  const priorityMap: Record<Priority, string> = {
+    LOW: 'Низкий',
+    MEDIUM: 'Средний',
+    HIGH: 'Высокий',
+    CRITICAL: 'Критический',
+  };
+
+  const statusChart = {
+    labels: byStatus.map((s) => statusMap[s.status] || s.status),
+    counts: byStatus.map((s) => s._count._all),
+  };
+
+  const priorityChart = {
+    labels: byPriority.map((p) => priorityMap[p.priority] || p.priority),
+    counts: byPriority.map((p) => p._count._all),
+  };
+
+  const projectChart = {
+    labels: byProjectWithNames.map((p) => p.name),
+    counts: byProjectWithNames.map((p) => p.count),
+  };
+
   res.render('reports/index', {
     title: 'Отчёты',
     byStatus,
     byPriority,
     byProject: byProjectWithNames,
+    statusChart,
+    priorityChart,
+    projectChart,
   });
 });
 
