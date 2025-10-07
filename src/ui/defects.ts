@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { PrismaClient, DefectStatus, Priority } from '@prisma/client';
+import { PrismaClient, DefectStatus, Priority, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth';
 import multer from 'multer';
@@ -12,19 +12,77 @@ const router = Router();
 router.use(requireAuth);
 
 router.get('/', async (req, res) => {
-  const { status, priority, projectId, assigneeId, q } = req.query as Record<string, string | undefined>;
-  const where: any = {};
-  if (status) where.status = status;
-  if (priority) where.priority = priority;
-  if (projectId) where.projectId = projectId;
-  if (assigneeId) where.assigneeId = assigneeId;
-  if (q) where.title = { contains: q, mode: 'insensitive' };
-  const defects = await prisma.defect.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    include: { project: true, stage: true, reporter: true, assignee: true },
+  const query = req.query as Partial<Record<'status' | 'priority' | 'projectId' | 'assigneeId' | 'q' | 'sort', string>>;
+  const filters = {
+    status: query.status ?? '',
+    priority: query.priority ?? '',
+    projectId: query.projectId ?? '',
+    assigneeId: query.assigneeId ?? '',
+    q: query.q ?? '',
+    sort: query.sort ?? 'createdAt_desc',
+  };
+
+  const where: Prisma.DefectWhereInput = {};
+  if (filters.status && Object.values(DefectStatus).includes(filters.status as DefectStatus)) {
+    where.status = filters.status as DefectStatus;
+  }
+  if (filters.priority && Object.values(Priority).includes(filters.priority as Priority)) {
+    where.priority = filters.priority as Priority;
+  }
+  if (filters.projectId) {
+    where.projectId = filters.projectId;
+  }
+  if (filters.assigneeId) {
+    where.assigneeId = filters.assigneeId;
+  }
+  if (filters.q) {
+    where.OR = [
+      { title: { contains: filters.q, mode: 'insensitive' } },
+      { description: { contains: filters.q, mode: 'insensitive' } },
+    ];
+  }
+
+  const orderMap: Record<string, Prisma.DefectOrderByWithRelationInput> = {
+    createdAt_desc: { createdAt: 'desc' },
+    createdAt_asc: { createdAt: 'asc' },
+    priority_desc: { priority: 'desc' },
+    priority_asc: { priority: 'asc' },
+    dueAt_asc: { dueAt: 'asc' },
+    dueAt_desc: { dueAt: 'desc' },
+  };
+  const orderBy = orderMap[filters.sort] ?? orderMap.createdAt_desc;
+
+  const [defects, projects, users] = await Promise.all([
+    prisma.defect.findMany({
+      where,
+      orderBy,
+      include: { project: true, stage: true, reporter: true, assignee: true },
+    }),
+    prisma.project.findMany({ orderBy: { name: 'asc' } }),
+    prisma.user.findMany({ orderBy: { name: 'asc' } }),
+  ]);
+
+  const statuses = Object.values(DefectStatus);
+  const priorities = Object.values(Priority);
+  const sortOptions = [
+    { value: 'createdAt_desc', label: 'По дате создания (новые)' },
+    { value: 'createdAt_asc', label: 'По дате создания (старые)' },
+    { value: 'priority_desc', label: 'По приоритету (высокие)' },
+    { value: 'priority_asc', label: 'По приоритету (низкие)' },
+    { value: 'dueAt_asc', label: 'По сроку (раньше)' },
+    { value: 'dueAt_desc', label: 'По сроку (позже)' },
+  ];
+
+  res.render('defects/list', {
+    title: 'Дефекты',
+    defects,
+    filters,
+    statuses,
+    priorities,
+    projects,
+    users,
+    sortOptions,
   });
-  res.render('defects/list', { title: 'Дефекты', defects });
 });
 
 router.get('/new', requireRole(['MANAGER', 'ENGINEER']), async (req, res) => {

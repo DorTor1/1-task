@@ -1,6 +1,62 @@
 <% layout('layout') %>
 <h1>Дефекты</h1>
-<a href="/defects/new">Новый дефект</a>
+
+<form method="get" class="filters">
+  <div>
+    <label>Статус</label>
+    <select name="status">
+      <option value="">Все</option>
+      <% statuses.forEach(s => { %>
+        <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Приоритет</label>
+    <select name="priority">
+      <option value="">Все</option>
+      <% priorities.forEach(p => { %>
+        <option value="<%= p %>" <%= filters.priority === p ? 'selected' : '' %>><%= p %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Проект</label>
+    <select name="projectId">
+      <option value="">Все</option>
+      <% projects.forEach(p => { %>
+        <option value="<%= p.id %>" <%= filters.projectId === p.id ? 'selected' : '' %>><%= p.name %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Исполнитель</label>
+    <select name="assigneeId">
+      <option value="">Все</option>
+      <% users.forEach(u => { %>
+        <option value="<%= u.id %>" <%= filters.assigneeId === u.id ? 'selected' : '' %>><%= u.name %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label>Поиск</label>
+    <input name="q" value="<%= filters.q %>" placeholder="Название или описание" />
+  </div>
+  <div>
+    <label>Сортировка</label>
+    <select name="sort">
+      <% sortOptions.forEach(o => { %>
+        <option value="<%= o.value %>" <%= filters.sort === o.value ? 'selected' : '' %>><%= o.label %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="actions">
+    <button type="submit">Применить</button>
+    <a href="/defects">Сбросить</a>
+    <a href="/defects/new">Новый дефект</a>
+  </div>
+</form>
+
 <table>
   <thead>
     <tr><th>Название</th><th>Проект</th><th>Этап</th><th>Статус</th><th>Приоритет</th><th>Исполнитель</th></tr>
